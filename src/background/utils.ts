@@ -5,12 +5,53 @@ import {
   GistData,
   REMU_SYNC_FILENAME,
 } from './syncService';
-import {
-  syncStoragePromise,
-  localStoragePromise,
-  debounce,
-  genUniqueKey,
-} from '../utils';
+// Chrome Storage API wrappers for Service Worker
+const localStoragePromise = {
+  get: (keys: string | string[] | Record<string, any>) => {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(keys, resolve);
+    });
+  },
+  set: (items: Record<string, any>) => {
+    return new Promise((resolve) => {
+      chrome.storage.local.set(items, resolve);
+    });
+  },
+};
+
+const syncStoragePromise = {
+  get: (keys: string | string[] | Record<string, any>) => {
+    return new Promise((resolve) => {
+      chrome.storage.sync.get(keys, resolve);
+    });
+  },
+  set: (items: Record<string, any>) => {
+    return new Promise((resolve) => {
+      chrome.storage.sync.set(items, resolve);
+    });
+  },
+};
+
+const genUniqueKey = () => {
+  return (
+    Date.now().toString(36) +
+    Math.random()
+      .toString(36)
+      .substr(2)
+  );
+};
+
+const debounce = (fn: Function, timeout = 1000) => {
+  let timer: any;
+  return function(...args: any[]) {
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(() => {
+      fn.apply(this, args);
+    }, timeout);
+  };
+};
 import { GistDataRsp } from './syncService';
 import {
   STORAGE_TOKEN,
@@ -57,11 +98,6 @@ export const initEnv = async () => {
     })
     .then<ISyncInfo>((results) => {
       const { token, gistId, updateAt, settings } = results as any;
-
-      window.REMU_GIST_ID = gistId;
-      window.REMU_TOKEN = token;
-      window.REMU_GIST_UPDATE_AT = updateAt;
-      window.REMU_SYNC_DELAY = +settings.synchronizingDelay;
       return { token, gistId, updateAt, settings };
     });
 };
@@ -90,9 +126,9 @@ export const checkSync = async (info) => {
 };
 
 const setBrowseAction = ({ title = '', text = '' }) => {
-  chrome.browserAction.setTitle({ title });
-  chrome.browserAction.setBadgeText({ text });
-  chrome.browserAction.setBadgeBackgroundColor({ color: [0, 0, 0, 0] });
+  chrome.action.setTitle({ title });
+  chrome.action.setBadgeText({ text });
+  chrome.action.setBadgeBackgroundColor({ color: [0, 0, 0, 0] });
 };
 
 export const updateGist = ({ token, gistId, updateAt }: ISyncInfo) => {
@@ -112,7 +148,7 @@ export const updateGist = ({ token, gistId, updateAt }: ISyncInfo) => {
                 [STORAGE_GIST_UPDATE_TIME]: data.updated_at,
               })
               .catch((errors) => {
-                chrome.browserAction.setBadgeBackgroundColor({
+                chrome.action.setBadgeBackgroundColor({
                   color: [255, 0, 0, 255],
                 });
               })
@@ -152,7 +188,7 @@ export const updateLocal = (data: GistData) => {
 
   return Promise.all([setNewTagsAndRepoWithTags, setUpdateAt])
     .catch((errors) => {
-      chrome.browserAction.setBadgeBackgroundColor({
+      chrome.action.setBadgeBackgroundColor({
         color: [255, 0, 0, 255],
       });
     })

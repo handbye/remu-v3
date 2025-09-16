@@ -1,4 +1,4 @@
-import { request } from '../utils';
+import { simpleRequest as request } from './simple-request';
 
 export interface GistDataRsp {
   data: GistData;
@@ -79,7 +79,7 @@ export const REMU_SYNC_FILENAME = 'remu-sync-data.json';
 
 export const createGist = (
   content: string,
-  token = window.REMU_TOKEN,
+  token: string,
 ): Promise<GistDataRsp> => {
   return request.post(
     '/gists',
@@ -101,8 +101,11 @@ export const createGist = (
 };
 
 export const getGist = ({
-  gistId = window.REMU_GIST_ID,
-  token = window.REMU_TOKEN,
+  gistId,
+  token,
+}: {
+  gistId: string;
+  token: string;
 }): Promise<GistDataRsp> => {
   return request.get(`/gists/${gistId}`, {
     headers: {
@@ -113,8 +116,8 @@ export const getGist = ({
 
 export const editGist = (
   content: string,
-  gistId = window.REMU_GIST_ID,
-  token = window.REMU_TOKEN,
+  gistId: string,
+  token: string,
 ): Promise<GistDataRsp> => {
   return request.patch(
     `/gists/${gistId}`,

@@ -344,7 +344,7 @@ export const localStoragePromise = storagePromise.local;
 export const syncStoragePromise = storagePromise.sync;
 
 export function openOptionsPage() {
-  const options_url = chrome.extension.getURL('options.html');
+  const options_url = chrome.runtime.getURL('options.html');
   chrome.tabs.query(
     {
       url: options_url,

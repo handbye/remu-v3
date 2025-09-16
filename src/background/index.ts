@@ -1,6 +1,4 @@
-import * as Sentry from '@sentry/browser';
 import { createGist, getGist } from './syncService';
-import { localStoragePromise, syncStoragePromise } from '../utils';
 import {
   STORAGE_TOKEN,
   STORAGE_GIST_ID,
@@ -10,11 +8,9 @@ import {
   IS_UPDATE_LOCAL,
   STORAGE_SETTINGS,
   IMessageAction,
-  ERROR_MSG,
   IResponseMsg,
 } from '../typings';
 import {
-  updateGistDebounce,
   ISyncInfo,
   checkSync,
   updateGist,
@@ -22,18 +18,42 @@ import {
   initEnv,
 } from './utils';
 
-if (process.env.NODE_ENV !== 'development') {
-  Sentry.init({
-    dsn: 'https://238e73db89cb46929d35b7f1b7c6b181@sentry.io/1510135',
-  });
-}
+// Chrome Storage API wrappers for Service Worker
+const localStoragePromise = {
+  get: (keys: string | string[] | Record<string, any>) => {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(keys, resolve);
+    });
+  },
+  set: (items: Record<string, any>) => {
+    return new Promise((resolve) => {
+      chrome.storage.local.set(items, resolve);
+    });
+  },
+};
 
-window.REMU_GIST_ID = '';
-window.REMU_TOKEN = '';
-window.REMU_GIST_UPDATE_AT = '';
+const syncStoragePromise = {
+  get: (keys: string | string[] | Record<string, any>) => {
+    return new Promise((resolve) => {
+      chrome.storage.sync.get(keys, resolve);
+    });
+  },
+  set: (items: Record<string, any>) => {
+    return new Promise((resolve) => {
+      chrome.storage.sync.set(items, resolve);
+    });
+  },
+};
 
-chrome.browserAction.onClicked.addListener(function() {
-  const index = chrome.extension.getURL('view-tab.html');
+// Service Worker global variables
+let REMU_GIST_ID = '';
+let REMU_TOKEN = '';
+let REMU_GIST_UPDATE_AT = '';
+let REMU_SYNC_DELAY = 0;
+let timeoutId: any = null;
+
+chrome.action.onClicked.addListener(function() {
+  const index = chrome.runtime.getURL('view-tab.html');
   chrome.tabs.query({ url: index }, function(tabs) {
     if (tabs.length) {
       chrome.tabs.update(tabs[0].id, { active: true });
@@ -47,7 +67,7 @@ chrome.browserAction.onClicked.addListener(function() {
 chrome.storage.onChanged.addListener(function(changes, areaName) {
   if (areaName === 'sync') {
     // only add token
-    if (changes[STORAGE_TOKEN] && !window.REMU_GIST_ID) {
+    if (changes[STORAGE_TOKEN] && !REMU_GIST_ID) {
       const token = changes[STORAGE_TOKEN].newValue;
       createGist('create gist', token).then(({ data }) => {
         const gistId = data.id;
@@ -58,9 +78,9 @@ chrome.storage.onChanged.addListener(function(changes, areaName) {
             [STORAGE_GIST_UPDATE_TIME]: updateTime,
           })
           .then(() => {
-            window.REMU_GIST_ID = gistId;
-            window.REMU_TOKEN = token;
-            window.REMU_GIST_UPDATE_AT = updateTime;
+            REMU_GIST_ID = gistId;
+            REMU_TOKEN = token;
+            REMU_GIST_UPDATE_AT = updateTime;
           });
       });
     }
@@ -68,23 +88,30 @@ chrome.storage.onChanged.addListener(function(changes, areaName) {
 
   if (areaName === 'local') {
     if (changes[STORAGE_REPO] && !changes[IS_UPDATE_LOCAL]) {
-      if (window.REMU_GIST_ID) {
+      if (REMU_GIST_ID) {
         const info: ISyncInfo = {
-          token: window.REMU_TOKEN,
-          gistId: window.REMU_GIST_ID,
+          token: REMU_TOKEN,
+          gistId: REMU_GIST_ID,
         };
-        if (window.timeoutId) {
-          clearTimeout(window.timeoutId);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
         }
-        window.timeoutId = window.setTimeout(() => {
+        timeoutId = setTimeout(() => {
           updateGist(info);
-        }, window.REMU_SYNC_DELAY);
+        }, REMU_SYNC_DELAY);
       }
     }
   }
 });
 
-initEnv().then(checkSync);
+initEnv().then((info) => {
+  REMU_GIST_ID = info.gistId;
+  REMU_TOKEN = info.token;
+  REMU_GIST_UPDATE_AT = info.updateAt || '';
+  REMU_SYNC_DELAY =
+    ((info as any).settings && (info as any).settings.synchronizingDelay) || 0;
+  return checkSync(info);
+});
 
 chrome.runtime.onMessage.addListener(function(
   request: IMessageAction,
@@ -94,14 +121,25 @@ chrome.runtime.onMessage.addListener(function(
   const { type, payload } = request;
   let message: IResponseMsg;
   if (type === 'refresh') {
-    initEnv().then(() => {
+    initEnv().then((info) => {
+      REMU_GIST_ID = info.gistId;
+      REMU_TOKEN = info.token;
+      REMU_GIST_UPDATE_AT = info.updateAt || '';
+      REMU_SYNC_DELAY =
+        ((info as any).settings && (info as any).settings.synchronizingDelay) ||
+        0;
       message = { status: 'success' };
       sendResponse(message);
     });
-  } else if (window.REMU_GIST_ID) {
+  } else if (REMU_GIST_ID) {
     if (type === 'updateGist') {
       initEnv()
-        .then(updateGist)
+        .then((info) => {
+          REMU_GIST_ID = info.gistId;
+          REMU_TOKEN = info.token;
+          REMU_GIST_UPDATE_AT = info.updateAt || '';
+          return updateGist(info);
+        })
         .then(() => {
           message = { status: 'success' };
           sendResponse(message);
@@ -112,7 +150,12 @@ chrome.runtime.onMessage.addListener(function(
         });
     } else if (type === 'updateLocal') {
       initEnv()
-        .then(getGist)
+        .then((info) => {
+          REMU_GIST_ID = info.gistId;
+          REMU_TOKEN = info.token;
+          REMU_GIST_UPDATE_AT = info.updateAt || '';
+          return getGist({ gistId: info.gistId, token: info.token });
+        })
         .then(({ data }) => {
           return updateLocal(data).then(() => {
             message = { status: 'success' };
