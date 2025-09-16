@@ -3,8 +3,21 @@
 <div align="center">
 <span style="font-size:16px;">Remu</span> - <span style="font-size:14px;font-weight:300;">Managing your GitHub Starred Repository efficiently has never been easier.</span>
 </div>
-</div>
 </p>
+
+## 🎉 Manifest V3 Upgrade Complete
+
+This project has been successfully upgraded to Chrome Extension Manifest V3, now fully compatible with the latest Chrome browsers!
+
+### Upgrade Highlights
+- ✅ Full Manifest V3 compatibility
+- ✅ Service Worker background scripts
+- ✅ Updated permission system
+- ✅ Better security and performance
+
+### Recommended Alternative
+For a more modern GitHub Stars management solution, we recommend:
+- [GitHub Lists](https://docs.github.com/en/get-started/exploring-projects-on-github/saving-repositories-with-stars#organizing-starred-repositories-with-lists) - GitHub's official Stars organization feature
 
 ---
 
@@ -82,8 +95,58 @@ Here, she is a Chrome browser plug-in, which manages GitHub Stars efficiently th
 
 ## Development
 
+### Requirements
+- Node.js 14+
+- Yarn
+
+### Development Steps
+
+1. Install dependencies:
+```shell
+yarn install
+```
+
+2. Development mode (watch for changes):
 ```shell
 yarn run start
+```
+
+3. Build for production:
+```shell
+yarn run build
+```
+
+4. Load extension in Chrome:
+   - Open `chrome://extensions/`
+   - Enable "Developer mode"
+   - Click "Load unpacked"
+   - Select the `dist` folder
+
+### Manifest V3 Upgrade Notes
+
+This project has been upgraded from Manifest V2 to V3, with major changes including:
+- Background scripts converted to Service Workers
+- Updated permission system
+- Adjusted API calls
+- Optimized Content Security Policy
+
+For detailed upgrade information, see [MANIFEST_V3_UPGRADE.md](./MANIFEST_V3_UPGRADE.md)
+
+## Technical Notes
+
+### Privacy Protection
+Due to Google Store policy requirements, a privacy agreement has been added and must be agreed to before use.
+**Tokens are only stored locally and will not be uploaded!**
+
+### Manifest V3 Compatibility
+- ✅ Chrome 88+
+- ✅ Edge 88+
+- ✅ Other Chromium-based browsers
+
+### Build Requirements
+Due to the use of older webpack versions, Node.js 17+ environments require the legacy OpenSSL provider:
+```shell
+NODE_OPTIONS=--openssl-legacy-provider yarn build
 ```
 
 ## Community

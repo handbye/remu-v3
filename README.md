@@ -5,14 +5,19 @@
 </div>
 </p>
 
-⚠️⚠️ 项目不再维护 | PROJECT NO LONGER MAINTAINS ⚠️⚠️
+## 🎉 Manifest V3 升级完成
 
+本项目已成功升级到 Chrome Extension Manifest V3，现在完全兼容最新的Chrome浏览器！
 
-[使用GitHub Lists](https://docs.github.com/cn/get-started/exploring-projects-on-github/saving-repositories-with-stars#organizing-starred-repositories-with-lists
-)  
+### 升级亮点
+- ✅ 完全兼容 Manifest V3
+- ✅ Service Worker 后台脚本
+- ✅ 更新的权限系统
+- ✅ 更好的安全性和性能
 
-[Use GitHub Lists](https://docs.github.com/en/get-started/exploring-projects-on-github/saving-repositories-with-stars#organizing-starred-repositories-with-lists
-)
+### 推荐替代方案
+如果你需要更现代的GitHub Stars管理方案，推荐使用：
+- [GitHub Lists](https://docs.github.com/cn/get-started/exploring-projects-on-github/saving-repositories-with-stars#organizing-starred-repositories-with-lists) - GitHub官方的Stars组织功能
 
 ---
 
@@ -85,18 +90,63 @@ here, 她是一个 Chrome 浏览器插件，通过标签分类来对 GitHub Star
 
 ## Development
 
+### 环境要求
+- Node.js 14+
+- Yarn
+
+### 开发步骤
+
+1. 安装依赖：
+```shell
+yarn install
+```
+
+2. 开发模式（监听文件变化）：
 ```shell
 yarn run start
 ```
+
+3. 构建生产版本：
+```shell
+yarn run build
+```
+
+4. 在Chrome中加载扩展：
+   - 打开 `chrome://extensions/`
+   - 启用"开发者模式"
+   - 点击"加载已解压的扩展程序"
+   - 选择 `dist` 文件夹
+
+### Manifest V3 升级说明
+
+本项目已从 Manifest V2 升级到 V3，主要变化包括：
+- Background脚本改为Service Worker
+- 权限系统更新
+- API调用方式调整
+- 内容安全策略优化
+
+详细升级信息请查看 [MANIFEST_V3_UPGRADE.md](./MANIFEST_V3_UPGRADE.md)
 
 ## Community
 
 null
 
-## Other
+## 技术说明
 
+### 隐私保护
 因为Google商店的政策问题，现在添加了隐私协议，在使用前需要同意。
 **Token 只会存储到本地，不会上传！**
+
+### Manifest V3 兼容性
+- ✅ Chrome 88+
+- ✅ Edge 88+
+- ✅ 其他基于Chromium的浏览器
+
+### 构建要求
+由于使用了较旧的webpack版本，在Node.js 17+环境下需要使用legacy OpenSSL provider：
+```shell
+NODE_OPTIONS=--openssl-legacy-provider yarn build
+```
 
 ## License
 
